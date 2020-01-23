@@ -4,13 +4,15 @@ class Game {
     constructor() {
         this._currentGen = [];
         this._nextGen = [];
-        this._dimensions = { cols: 40, rows: 40 };
+        this._dimensions = { cols: 40, rows: 40, gameWidth: 0, gameHeight: 0 };
         this._cellSize = 20;
         this._currentIteration = 0;
         this._tickSpeedMultiplier = 1;
         this._currentGen = new Array(this._dimensions.rows) // New array with rows
             .fill(0).map(row => new Array(this._dimensions.cols) // Fill array and map its contents
             .fill(0).map(col => Math.floor(Math.random() * 2))); // Map contents to columns
+        this._dimensions.gameWidth = this._dimensions.cols * this._cellSize;
+        this._dimensions.gameHeight = this._dimensions.rows * this._cellSize;
     }
     /* Getters */
     get updatePack() {

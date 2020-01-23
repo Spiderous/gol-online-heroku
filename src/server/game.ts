@@ -1,7 +1,7 @@
 export class Game {
     private _currentGen: Array<Array<number>> = [];
     private _nextGen: Array<Array<number>> = [];
-    private _dimensions = { cols: 40, rows: 40 };
+    private _dimensions = { cols: 40, rows: 40, gameWidth: 0, gameHeight: 0 };
     private _cellSize: number = 20;
 
     private _currentIteration: number = 0;
@@ -11,6 +11,9 @@ export class Game {
         this._currentGen = new Array(this._dimensions.rows) // New array with rows
             .fill(0).map(row => new Array(this._dimensions.cols) // Fill array and map its contents
                 .fill(0).map(col => Math.floor(Math.random() * 2))); // Map contents to columns
+
+        this._dimensions.gameWidth = this._dimensions.cols * this._cellSize;
+        this._dimensions.gameHeight = this._dimensions.rows * this._cellSize;
     }
 
     /* Getters */

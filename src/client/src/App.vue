@@ -29,7 +29,7 @@ html {
 }
 
 #app {
-  background-color: #333;
+  background-color: rgb(42, 48, 82);
 
   height: 100%;
 }
