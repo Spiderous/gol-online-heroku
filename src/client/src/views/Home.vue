@@ -1,16 +1,16 @@
 <template>
   <div class="game">
     <!-- 5x5 pattern creator  -->
-    <section class="creator" v-if="creatorOpen">
+    <section class="creator" v-if="patternCreator.isOpen">
       <h1 class="creator-header">Kreator struktur</h1>
 
       <ul class="creator-grid">
-        <ul class="grid-row" v-for="(row, i) in patternCreator" :key="i">
-          <ul class="grid-col" v-for="(col, j) in patternCreator[i]" :key="j">
+        <ul class="grid-row" v-for="(row, i) in patternCreator.grid" :key="i">
+          <ul class="grid-col" v-for="(col, j) in patternCreator.grid[i]" :key="j">
             <li
               class="grid-cell"
-              :class="patternCreator[i][j] ? 'activated' : ''"
-              @click="changeCreatorCellState(i, j)"
+              :class="patternCreator.grid[i][j] ? 'activated' : ''"
+              @click="patternCreator.toggleCell(i, j)"
             ></li>
           </ul>
         </ul>
@@ -19,12 +19,9 @@
       <div class="creator-actions">
         <button
           class="action_choose-pattern"
-          @click="creatorOpen = false; placingPattern = true;"
+          @click="patternCreator.choosePattern()"
         >Dodaj strukturę</button>
-        <button
-          class="action_close-creator"
-          @click="creatorOpen = false; placingPattern = false;"
-        >Wyjdź z kreatora</button>
+        <button class="action_close-creator" @click="patternCreator.closeCreator()">Wyjdź z kreatora</button>
       </div>
     </section>
 
@@ -33,16 +30,18 @@
         <div class="floating-actions">
           <button
             class="action_open-creator"
-            @click="creatorOpen = !creatorOpen"
-          >{{ creatorOpen ? "Zamknij kreator" : "Otwórz kreator" }}</button>
+            @click="patternCreator.isOpen ? patternCreator.closeCreator() : patternCreator.openCreator()"
+          >{{ patternCreator.isOpen ? "Zamknij kreator" : "Otwórz kreator" }}</button>
         </div>
-        <canvas
-          ref="canvas"
-          @mousemove="mouseMove"
-          @click="canvasClick"
-          @mousedown="mouseDown"
-          @mouseup="mouseUp"
-        ></canvas>
+        <v-touch @touch="console.log('xd');">
+          <canvas
+            ref="canvas"
+            @mousemove="mouseMove"
+            @click="canvasClick"
+            @mousedown="mouseDown"
+            @mouseup="mouseUp"
+          ></canvas>
+        </v-touch>
       </div>
     </main>
   </div>
@@ -87,6 +86,12 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  text-align: center;
+
+  @media screen and (max-width: 600px) {
+    width: 100%;
+  }
 
   &-header {
     font-size: 4rem;

@@ -1,6 +1,7 @@
-/* es-lint-ignore */
-import { Vue, Component, Ref } from "vue-property-decorator";
+import { Vue, Component } from "vue-property-decorator";
 import io from "socket.io-client";
+
+import PatternCreator from './pattern_creator'
 
 enum GameState {
     LOADING = 0,
@@ -8,18 +9,14 @@ enum GameState {
     RUNNING = 2
 }
 
+class Game {
+
+}
+
+
 @Component
 export default class Home extends Vue {
-    patternCreator: number[][] = [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
-    ];
-    creatorOpen: boolean = false;
-    placingPattern: boolean = false;
-
+    patternCreator: PatternCreator = new PatternCreator(this);
     gameState: number = GameState.LOADING;
 
     camera = {
@@ -55,6 +52,8 @@ export default class Home extends Vue {
     canvasHeight!: number;
     canvasRatio: number = 16 / 9;
 
+    responsiveSm: number = 600;
+
     socket!: any;
 
     created() {
@@ -68,13 +67,16 @@ export default class Home extends Vue {
             "2d"
         ) as CanvasRenderingContext2D;
 
+        window.addEventListener('resize', () => {
+            this.resizeCanvas();
+        });
     }
 
     handleSocketConnection(): void {
         this.socket.on("init_pack", (initPack: any) => {
             this.gameGrid = { ...initPack };
 
-            this.resizeCanvas(1000, 900);
+            this.resizeCanvas();
             this.camera.offsetX = (this.context.canvas.width - this.gameGrid.dimensions.cols * this.gameGrid.cellSize) / 2;
             this.camera.offsetY = (this.context.canvas.height - this.gameGrid.dimensions.rows * this.gameGrid.cellSize) / 2;
 
@@ -88,12 +90,15 @@ export default class Home extends Vue {
         });
     }
 
-    resizeCanvas(w: number, h: number) {
-        this.canvasWidth = w;
-        this.canvasHeight = h;
+    resizeCanvas() {
+        let width = (window.innerWidth < this.responsiveSm ? 1 : 0.8) * window.innerWidth;
+        let height = window.innerHeight < width / this.canvasRatio || window.innerWidth < this.responsiveSm ? window.innerHeight : width / this.canvasRatio;
 
-        this.context.canvas.width = this.canvasWidth;
-        this.context.canvas.height = this.canvasHeight;
+        this.context.canvas.width = width;
+        this.context.canvas.height = height;
+
+        this.canvasWidth = width;
+        this.canvasHeight = height;
     }
 
     mouseMove(e: MouseEvent) {
@@ -117,7 +122,7 @@ export default class Home extends Vue {
 
     mouseDown(e: MouseEvent) {
         if (this.gameState != GameState.RUNNING) return;
-        if (this.placingPattern) return;
+        if (this.patternCreator.isPlacing) return;
 
 
         this.mouseCursor.clickPos.x = e.pageX - this.camera.offsetX;
@@ -134,35 +139,16 @@ export default class Home extends Vue {
     canvasClick(e: MouseEvent) {
         if (this.gameState != GameState.RUNNING) return;
 
-        if (this.creatorOpen || !this.placingPattern) return;
+        if (this.patternCreator.isOpen || !this.patternCreator.isPlacing) return;
 
         this.socket.emit("create_pattern", {
-            pattern: this.patternCreator,
+            pattern: this.patternCreator.grid,
             offsetRow: this.mouseCursor.overCell.row - 2,
             offsetCol: this.mouseCursor.overCell.col - 2
         });
 
-        this.patternCreator = [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
-        ];
-
-        this.placingPattern = false;
-    }
-
-    changeCreatorCellState(row: number, col: number) {
-        if (this.gameState != GameState.RUNNING) return;
-
-        this.$set(
-            this.patternCreator[row],
-            col,
-            this.patternCreator[row][col] ? 0 : 1
-        );
-
-
+        this.patternCreator.resetGrid();
+        this.patternCreator.closeCreator();
     }
 
     renderGame() {
@@ -204,15 +190,15 @@ export default class Home extends Vue {
 
         //Render pattern preview if in placing pattern mode
         let outOfBounds = false;
-        if (this.placingPattern) {
+        if (this.patternCreator.isPlacing) {
             this.context.fillStyle = "green";
 
-            for (let i = 0; i < this.patternCreator.length; i++) {
-                for (let j = 0; j < this.patternCreator.length; j++) {
+            for (let i = 0; i < this.patternCreator.grid.length; i++) {
+                for (let j = 0; j < this.patternCreator.grid.length; j++) {
                     const offsetCol = (this.mouseCursor.overCell.col + j - 2) * this.gameGrid.cellSize;
                     const offsetRow = (this.mouseCursor.overCell.row + i - 2) * this.gameGrid.cellSize;
 
-                    if (this.patternCreator[i][j] == 1) {
+                    if (this.patternCreator.grid[i][j] == 1) {
                         if (offsetRow < 0 || offsetRow >= this.gameGrid.dimensions.gameHeight) {
                             outOfBounds = true;
                             continue;
