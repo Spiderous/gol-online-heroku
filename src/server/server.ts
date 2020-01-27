@@ -41,10 +41,10 @@ class App {
     gameLoop() {
         setInterval(() => {
             this.game.upgradeGrid();
-            this.io.to('game_room').emit('update_pack', this.game.updatePack);
+            this.io.to('game_room').emit('update_pack', this.game.nextGenPack);
 
 
-        }, 1000 / this.game.tickSpeed)
+        }, 1000 / this.game.tickSpeed);
     }
 
     handleSockets(): void {

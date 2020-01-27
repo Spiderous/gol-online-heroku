@@ -4,10 +4,11 @@ class Game {
     constructor() {
         this._currentGen = [];
         this._nextGen = [];
-        this._dimensions = { cols: 40, rows: 40, gameWidth: 0, gameHeight: 0 };
+        this._interactions = [];
+        this._dimensions = { cols: 70, rows: 70, gameWidth: 0, gameHeight: 0 };
         this._cellSize = 20;
         this._currentIteration = 0;
-        this._tickSpeedMultiplier = 1;
+        this._tickSpeedMultiplier = 3;
         this._currentGen = new Array(this._dimensions.rows) // New array with rows
             .fill(0).map(row => new Array(this._dimensions.cols) // Fill array and map its contents
             .fill(0).map(col => Math.floor(Math.random() * 2))); // Map contents to columns
@@ -19,6 +20,12 @@ class Game {
         return {
             currentGen: this._currentGen,
             currentIteration: this._currentIteration
+        };
+    }
+    get nextGenPack() {
+        return {
+            currentIteration: this._currentIteration,
+            nextGen: this._nextGen
         };
     }
     get initPack() {
@@ -44,11 +51,12 @@ class Game {
                 if (row < 0 || row >= this._dimensions.rows)
                     continue;
                 if (pattern[i][j] == 1)
-                    this._nextGen.push([col, row, pattern[i][j]]);
+                    this._interactions.push([col, row, pattern[i][j]]);
             }
         }
     }
     upgradeGrid() {
+        this._nextGen.length = 0;
         for (let row = 0; row < this._dimensions.rows; row++) {
             for (let col = 0; col < this._dimensions.cols; col++) {
                 const cell = this._currentGen[row][col];
@@ -76,9 +84,13 @@ class Game {
                     this._nextGen.push([row, col, 1]);
             }
         }
+        this._interactions.forEach(next => {
+            this._nextGen.push([next[0], next[1], next[2]]);
+        });
         this._nextGen.forEach(next => {
             this._currentGen[next[0]][next[1]] = next[2];
         });
+        this._interactions.length = 0;
         this._currentIteration++;
     }
 }

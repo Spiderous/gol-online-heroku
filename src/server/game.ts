@@ -1,11 +1,12 @@
 export class Game {
     private _currentGen: Array<Array<number>> = [];
-    private _nextGen: Array<Array<number>> = [];
-    private _dimensions = { cols: 40, rows: 40, gameWidth: 0, gameHeight: 0 };
+    private _nextGen: number[][] = [];
+    private _interactions: number[][] = [];
+    private _dimensions = { cols: 70, rows: 70, gameWidth: 0, gameHeight: 0 };
     private _cellSize: number = 20;
 
     private _currentIteration: number = 0;
-    private _tickSpeedMultiplier: number = 1;
+    private _tickSpeedMultiplier: number = 3;
 
     constructor() {
         this._currentGen = new Array(this._dimensions.rows) // New array with rows
@@ -22,6 +23,13 @@ export class Game {
             currentGen: this._currentGen,
             currentIteration: this._currentIteration
         };
+    }
+
+    get nextGenPack(): object {
+        return {
+            currentIteration: this._currentIteration,
+            nextGen: this._nextGen
+        }
     }
 
     get initPack(): object {
@@ -49,12 +57,14 @@ export class Game {
                 if (row < 0 || row >= this._dimensions.rows) continue;
 
                 if (pattern[i][j] == 1)
-                    this._nextGen.push([col, row, pattern[i][j]]);
+                    this._interactions.push([col, row, pattern[i][j]]);
             }
         }
     }
 
     upgradeGrid() {
+        this._nextGen.length = 0;
+
         for (let row = 0; row < this._dimensions.rows; row++) {
             for (let col = 0; col < this._dimensions.cols; col++) {
                 const cell = this._currentGen[row][col];
@@ -86,9 +96,16 @@ export class Game {
             }
         }
 
+        this._interactions.forEach(next => {
+            this._nextGen.push([next[0], next[1], next[2]]);
+        });
+
         this._nextGen.forEach(next => {
             this._currentGen[next[0]][next[1]] = next[2];
         });
+
+
+        this._interactions.length = 0;
 
         this._currentIteration++;
     }

@@ -85,7 +85,12 @@ export default class Home extends Vue {
         });
 
         this.socket.on("update_pack", (updatePack: any) => {
-            this.gameGrid.currentGen = updatePack.currentGen;
+            // this.gameGrid.currentGen = updatePack.currentGen
+            updatePack.nextGen.forEach((next: any) => {
+                this.gameGrid.currentGen[next[0]][next[1]] = next[2];
+            });
+
+            console.log(updatePack.nextGen.length);
             this.gameGrid.currentIteration = updatePack.currentIteration;
         });
     }
