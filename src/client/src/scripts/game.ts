@@ -9,11 +9,6 @@ enum GameState {
     RUNNING = 2
 }
 
-class Game {
-
-}
-
-
 @Component
 export default class Home extends Vue {
     patternCreator: PatternCreator = new PatternCreator(this);
@@ -21,26 +16,30 @@ export default class Home extends Vue {
 
     camera = {
         offsetX: 0,
-        offsetY: 0
+        offsetY: 0,
+        zoomFactor: 1
     }
 
-    mouseCursor = {
-        overCell: {
-            col: -1,
-            row: -1
-        },
-        clickPos: {
-            x: 0,
-            y: 0
-        },
-        dragging: false,
-    };
+    // Mouse variables
+    mouseX: number = 0;
+    mouseY: number = 0;
+
+    mousePanStartX: number = 0;
+    mousePanStartY: number = 0;
+
+    mouseZoomStartX: number = 0;
+    mouseZoomStartY: number = 0;
+
+    mouseCellRow: number = 0;
+    mouseCellCol: number = 0;
+
+    mouseDragging: boolean = false;
 
     isDev: boolean = process.env.NODE_ENV === "development";
     devPort: number = 2000;
 
     gameGrid!: {
-        currentGen: number[][];
+        currentGen: { state: number; heatCount: number; }[][];
         currentIteration: number;
         dimensions: { cols: number; rows: number, gameWidth: number; gameHeight: number; };
         cellSize: number;
@@ -52,7 +51,7 @@ export default class Home extends Vue {
     canvasHeight!: number;
     canvasRatio: number = 16 / 9;
 
-    responsiveSm: number = 600;
+    responsiveSm: number = 900;
 
     socket!: any;
 
@@ -70,6 +69,11 @@ export default class Home extends Vue {
         window.addEventListener('resize', () => {
             this.resizeCanvas();
         });
+
+        window.addEventListener('wheel', (e: WheelEvent) => {
+            // if (e.deltaY < 0) this.camera.zoomFactor *= 1.05
+            // else this.camera.zoomFactor *= 0.95
+        })
     }
 
     handleSocketConnection(): void {
@@ -87,10 +91,9 @@ export default class Home extends Vue {
         this.socket.on("update_pack", (updatePack: any) => {
             // this.gameGrid.currentGen = updatePack.currentGen
             updatePack.nextGen.forEach((next: any) => {
-                this.gameGrid.currentGen[next[0]][next[1]] = next[2];
+                this.gameGrid.currentGen[next[0]][next[1]].state = next[2];
             });
 
-            console.log(updatePack.nextGen.length);
             this.gameGrid.currentIteration = updatePack.currentIteration;
         });
     }
@@ -110,18 +113,17 @@ export default class Home extends Vue {
         if (this.gameState != GameState.RUNNING) return;
 
         const boundaries = this.context.canvas.getBoundingClientRect();
-        this.mouseCursor.overCell.col = Math.floor(
+        this.mouseCellCol = Math.floor(
             (e.pageX - this.camera.offsetX - boundaries.left) / this.gameGrid.cellSize
         );
 
-        this.mouseCursor.overCell.row = Math.floor(
+        this.mouseCellRow = Math.floor(
             (e.pageY - this.camera.offsetY - boundaries.top) / this.gameGrid.cellSize
         );
 
-
-        if (this.mouseCursor.dragging) {
-            this.camera.offsetX = e.pageX - this.mouseCursor.clickPos.x;
-            this.camera.offsetY = e.pageY - this.mouseCursor.clickPos.y;
+        if (this.mouseDragging) {
+            this.camera.offsetX = (e.pageX - this.mousePanStartX) / this.camera.zoomFactor;
+            this.camera.offsetY = (e.pageY - this.mousePanStartY) / this.camera.zoomFactor;
         }
     }
 
@@ -130,26 +132,29 @@ export default class Home extends Vue {
         if (this.patternCreator.isPlacing) return;
 
 
-        this.mouseCursor.clickPos.x = e.pageX - this.camera.offsetX;
-        this.mouseCursor.clickPos.y = e.pageY - this.camera.offsetY;
-        this.mouseCursor.dragging = true;
+        this.mousePanStartX = e.pageX - this.camera.offsetX;
+        this.mousePanStartY = e.pageY - this.camera.offsetY;
+        this.mouseDragging = true;
     }
 
     mouseUp(e: MouseEvent) {
         if (this.gameState != GameState.RUNNING) return;
 
-        this.mouseCursor.dragging = false;
+        this.mouseDragging = false;
     }
 
     canvasClick(e: MouseEvent) {
         if (this.gameState != GameState.RUNNING) return;
 
+        console.log(this.gameGrid.currentGen[this.mouseCellRow][this.mouseCellCol].heatCount);
+
+
         if (this.patternCreator.isOpen || !this.patternCreator.isPlacing) return;
 
         this.socket.emit("create_pattern", {
             pattern: this.patternCreator.grid,
-            offsetRow: this.mouseCursor.overCell.row - 2,
-            offsetCol: this.mouseCursor.overCell.col - 2
+            offsetRow: this.mouseCellRow - 2,
+            offsetCol: this.mouseCellCol - 2
         });
 
         this.patternCreator.resetGrid();
@@ -166,14 +171,15 @@ export default class Home extends Vue {
         this.context.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
         this.context.save();
-        this.context.transform(1, 0, 0, 1, this.camera.offsetX, this.camera.offsetY);
+        // this.context.transform(this.camera.zoomFactor, 0, 0, this.camera.zoomFactor, this.camera.offsetX, this.camera.offsetY);
+        this.context.translate(this.camera.offsetX, this.camera.offsetY);
 
         // Rendering grid
         this.context.lineWidth = 1;
         this.context.strokeStyle = "gray";
         for (let col = 0; col < this.gameGrid.dimensions.cols; col++) {
             for (let row = 0; row < this.gameGrid.dimensions.rows; row++) {
-                const cell = this.gameGrid.currentGen[col][row];
+                const cell = this.gameGrid.currentGen[col][row].state;
 
                 this.context.fillStyle = cell ? "black" : "white";
 
@@ -200,8 +206,8 @@ export default class Home extends Vue {
 
             for (let i = 0; i < this.patternCreator.grid.length; i++) {
                 for (let j = 0; j < this.patternCreator.grid.length; j++) {
-                    const offsetCol = (this.mouseCursor.overCell.col + j - 2) * this.gameGrid.cellSize;
-                    const offsetRow = (this.mouseCursor.overCell.row + i - 2) * this.gameGrid.cellSize;
+                    const offsetCol = Math.floor((this.mouseCellCol + j - 2) * this.gameGrid.cellSize);
+                    const offsetRow = Math.floor((this.mouseCellRow + i - 2) * this.gameGrid.cellSize);
 
                     if (this.patternCreator.grid[i][j] == 1) {
                         if (offsetRow < 0 || offsetRow >= this.gameGrid.dimensions.gameHeight) {
@@ -228,8 +234,8 @@ export default class Home extends Vue {
             this.context.strokeStyle = outOfBounds ? "red" : "black";
             this.context.lineWidth = 2;
             this.context.strokeRect(
-                (this.mouseCursor.overCell.col - 2) * this.gameGrid.cellSize,
-                (this.mouseCursor.overCell.row - 2) * this.gameGrid.cellSize,
+                (this.mouseCellCol - 2) * this.gameGrid.cellSize,
+                (this.mouseCellRow - 2) * this.gameGrid.cellSize,
                 this.gameGrid.cellSize * 5,
                 this.gameGrid.cellSize * 5
             );

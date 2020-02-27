@@ -1,30 +1,27 @@
 export class Game {
-    private _currentGen: Array<Array<number>> = [];
+    private _currentGen: { state: number, heatCount: number }[][] = [];
     private _nextGen: number[][] = [];
     private _interactions: number[][] = [];
-    private _dimensions = { cols: 70, rows: 70, gameWidth: 0, gameHeight: 0 };
+
+    private _dimensions = { cols: 80, rows: 80, gameWidth: 0, gameHeight: 0 };
     private _cellSize: number = 20;
 
     private _currentIteration: number = 0;
-    private _tickSpeedMultiplier: number = 3;
+    private _tickSpeedMultiplier: number = 2;
 
     constructor() {
         this._currentGen = new Array(this._dimensions.rows) // New array with rows
             .fill(0).map(row => new Array(this._dimensions.cols) // Fill array and map its contents
-                .fill(0).map(col => Math.floor(Math.random() * 2))); // Map contents to columns
+                .fill(0).map(col => ({
+                    state: Math.floor(Math.random() * 2),
+                    heatCount: 0
+                }))); // Map contents to columns
 
         this._dimensions.gameWidth = this._dimensions.cols * this._cellSize;
         this._dimensions.gameHeight = this._dimensions.rows * this._cellSize;
     }
 
     /* Getters */
-    get updatePack(): object {
-        return {
-            currentGen: this._currentGen,
-            currentIteration: this._currentIteration
-        };
-    }
-
     get nextGenPack(): object {
         return {
             currentIteration: this._currentIteration,
@@ -67,7 +64,7 @@ export class Game {
 
         for (let row = 0; row < this._dimensions.rows; row++) {
             for (let col = 0; col < this._dimensions.cols; col++) {
-                const cell = this._currentGen[row][col];
+                const cellState = this._currentGen[row][col].state;
                 let liveNeighbors = 0;
 
                 for (let i = -1; i <= 1; i++) {
@@ -84,15 +81,19 @@ export class Game {
                         if (nCol < 0 || nCol >= this._dimensions.cols)
                             continue;
 
-                        const nCell = this._currentGen[nRow][nCol];
+                        const nCellState = this._currentGen[nRow][nCol].state;
 
-                        if (nCell) liveNeighbors++;
+                        if (nCellState) liveNeighbors++;
                     }
                 }
 
-                if (cell && liveNeighbors < 2) this._nextGen.push([row, col, 0]);
-                if (cell && liveNeighbors > 3) this._nextGen.push([row, col, 0]);
-                if (!cell && liveNeighbors == 3) this._nextGen.push([row, col, 1]);
+                if (cellState && (liveNeighbors < 2 || liveNeighbors > 3)) {
+                    this._nextGen.push([row, col, 0]);
+                }
+
+                if (!cellState && liveNeighbors == 3) {
+                    this._nextGen.push([row, col, 1]);
+                }
             }
         }
 
@@ -101,9 +102,10 @@ export class Game {
         });
 
         this._nextGen.forEach(next => {
-            this._currentGen[next[0]][next[1]] = next[2];
-        });
+            this._currentGen[next[0]][next[1]].state = next[2];
+            this._currentGen[next[0]][next[1]].heatCount++;
 
+        });
 
         this._interactions.length = 0;
 
