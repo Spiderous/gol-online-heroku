@@ -44,6 +44,7 @@ export default class Home extends Vue {
         dimensions: { cols: number; rows: number, gameWidth: number; gameHeight: number; };
         cellSize: number;
         tickSpeedMultiplier: number;
+        heatMap: Map<number, number>;
     };
 
     context!: CanvasRenderingContext2D;
@@ -80,6 +81,9 @@ export default class Home extends Vue {
         this.socket.on("init_pack", (initPack: any) => {
             this.gameGrid = { ...initPack };
 
+            console.log(initPack.heatMap);
+
+
             this.resizeCanvas();
             this.camera.offsetX = (this.context.canvas.width - this.gameGrid.dimensions.cols * this.gameGrid.cellSize) / 2;
             this.camera.offsetY = (this.context.canvas.height - this.gameGrid.dimensions.rows * this.gameGrid.cellSize) / 2;
@@ -92,6 +96,7 @@ export default class Home extends Vue {
             // this.gameGrid.currentGen = updatePack.currentGen
             updatePack.nextGen.forEach((next: any) => {
                 this.gameGrid.currentGen[next[0]][next[1]].state = next[2];
+                this.gameGrid.currentGen[next[0]][next[1]].heatCount = next[3];
             });
 
             this.gameGrid.currentIteration = updatePack.currentIteration;
@@ -146,7 +151,7 @@ export default class Home extends Vue {
     canvasClick(e: MouseEvent) {
         if (this.gameState != GameState.RUNNING) return;
 
-        console.log(this.gameGrid.currentGen[this.mouseCellRow][this.mouseCellCol].heatCount);
+        // console.log(this.gameGrid.currentGen[this.mouseCellRow][this.mouseCellCol].heatCount);
 
 
         if (this.patternCreator.isOpen || !this.patternCreator.isPlacing) return;
@@ -179,9 +184,9 @@ export default class Home extends Vue {
         this.context.strokeStyle = "gray";
         for (let col = 0; col < this.gameGrid.dimensions.cols; col++) {
             for (let row = 0; row < this.gameGrid.dimensions.rows; row++) {
-                const cell = this.gameGrid.currentGen[col][row].state;
+                const cell = this.gameGrid.currentGen[col][row];
 
-                this.context.fillStyle = cell ? "black" : "white";
+                this.context.fillStyle = cell.state ? "black" : "white";
 
                 this.context.fillRect(
                     col * this.gameGrid.cellSize,
@@ -196,6 +201,10 @@ export default class Home extends Vue {
                     this.gameGrid.cellSize,
                     this.gameGrid.cellSize
                 );
+
+                // this.context.fillStyle = cell.state ? "white" : "black";
+                // this.context.fillText(cell.heatCount.toString(), col * this.gameGrid.cellSize,
+                //     row * this.gameGrid.cellSize + 20);
             }
         }
 

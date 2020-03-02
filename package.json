@@ -20,7 +20,7 @@
     "watch-server": "cd ./dist && nodemon server.js",
     "watch-client": "cd ./src/client && npm run serve",
     "build-client": "cd ./src/client && npm run build",
-    "dev": "concurrently -k \"npm:watch-*\""
+    "dev": "concurrently n-k \"npm:watch-*\""
   },
   "repository": {
     "type": "git",
